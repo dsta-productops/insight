@@ -1,0 +1,19 @@
+# Real interview data — MUST never leave the device / reach a public host.
+# The app is air-gapped by design; deploying this would expose production
+# sessions, transcripts, audio, suggestions and summaries publicly.
+data/
+
+# Desktop (Tauri) shell + its multi-GB build output, bundled binaries & models.
+src-tauri/
+
+# Local build artifacts (Vercel rebuilds remotely).
+.next/
+out/
+node_modules/
+
+# Weighty / irrelevant to the web build.
+*.dmg
+*.log
+tsconfig.tsbuildinfo
+AI_HANDOFF*.md
+.claude/

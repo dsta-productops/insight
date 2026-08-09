@@ -1,0 +1,31 @@
+/* Self-hosted fonts for air-gap compatibility.
+   All font files live in /public/fonts/ — no external CDN refs.
+
+   NOTE: the PRIZM docs site does NOT import this file. Because the site deploys
+   under a `/prizm` subpath, it injects these @font-face rules from app/layout.tsx
+   with basePath-prefixed URLs (see `fontFaceStyles` there). This file is the
+   copy-paste artifact for consumers, whose apps typically serve from root. */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Inter/InterVariable.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Inter";
+  font-style: italic;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("/fonts/Inter/InterVariable-Italic.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("/fonts/JetBrainsMono/JetBrainsMono-VariableFont_wght.ttf") format("truetype");
+}

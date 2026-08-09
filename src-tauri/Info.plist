@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <!-- Required for the live recorder's getUserMedia mic capture in WKWebView.
+       Merged into the app's Info.plist by Tauri on macOS builds. -->
+  <key>NSMicrophoneUsageDescription</key>
+  <string>INSIGHT records interview audio on this device to transcribe and coach in real time. Audio never leaves your machine.</string>
+</dict>
+</plist>

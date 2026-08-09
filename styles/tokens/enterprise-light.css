@@ -1,0 +1,33 @@
+/* ============================================================
+   Enterprise — Light mode
+   ------------------------------------------------------------
+   Aesthetic: calm, spacious, professional. Blue accent.
+   Default theme when no [data-zone] / [data-mode] is set.
+   ============================================================ */
+
+:root,
+[data-zone="enterprise"][data-mode="light"] {
+  --prizm-color-bg: var(--prizm-slate-50);
+  --prizm-color-bg-subtle: oklch(99.5% 0.002 247.84);
+  --prizm-color-bg-muted: var(--prizm-slate-100);
+
+  --prizm-color-surface: oklch(100% 0 0);
+  --prizm-color-surface-elevated: oklch(100% 0 0);
+
+  --prizm-color-border: var(--prizm-slate-200);
+  --prizm-color-border-strong: var(--prizm-slate-300);
+
+  --prizm-color-fg: var(--prizm-slate-900);
+  --prizm-color-fg-muted: var(--prizm-slate-600);
+  --prizm-color-fg-subtle: var(--prizm-slate-500);
+
+  --prizm-color-accent: var(--prizm-blue-600);
+  --prizm-color-accent-fg: oklch(100% 0 0);
+  --prizm-color-accent-hover: var(--prizm-blue-700);
+
+  --prizm-color-danger: var(--prizm-red-700);
+  --prizm-color-danger-fg: oklch(100% 0 0);
+  --prizm-color-success: var(--prizm-green-700);
+  --prizm-color-warning: var(--prizm-amber-700);
+  --prizm-color-info: var(--prizm-sky-700);
+}

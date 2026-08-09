@@ -1,0 +1,31 @@
+/* ============================================================
+   Enterprise — Dark mode
+   ------------------------------------------------------------
+   Aesthetic: deep slate surfaces, restful contrast, blue accent.
+   ============================================================ */
+
+[data-zone="enterprise"][data-mode="dark"] {
+  --prizm-color-bg: var(--prizm-slate-950);
+  --prizm-color-bg-subtle: oklch(10.4% 0.04 264.7);
+  --prizm-color-bg-muted: oklch(16.5% 0.04 265.75);
+
+  --prizm-color-surface: var(--prizm-slate-900);
+  --prizm-color-surface-elevated: var(--prizm-slate-800);
+
+  --prizm-color-border: var(--prizm-slate-800);
+  --prizm-color-border-strong: var(--prizm-slate-700);
+
+  --prizm-color-fg: var(--prizm-slate-50);
+  --prizm-color-fg-muted: var(--prizm-slate-300);
+  --prizm-color-fg-subtle: var(--prizm-slate-400);
+
+  --prizm-color-accent: var(--prizm-blue-500);
+  --prizm-color-accent-fg: var(--prizm-slate-950);
+  --prizm-color-accent-hover: var(--prizm-blue-400);
+
+  --prizm-color-danger: var(--prizm-red-600);
+  --prizm-color-danger-fg: var(--prizm-slate-50);
+  --prizm-color-success: var(--prizm-green-500);
+  --prizm-color-warning: var(--prizm-amber-500);
+  --prizm-color-info: var(--prizm-sky-500);
+}

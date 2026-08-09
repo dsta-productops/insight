@@ -1,0 +1,147 @@
+@import "tailwindcss";
+
+@import "../styles/fonts.css";
+@import "../styles/tokens/baseline.css";
+@import "../styles/tokens/enterprise-light.css";
+@import "../styles/tokens/enterprise-dark.css";
+
+/* ============================================================
+   Tailwind v4 theme — wires PRIZM CSS custom properties to
+   utilities. Mirrors the PRIZM 4.0 reference globals.css.
+   ============================================================ */
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --color-bg: var(--prizm-color-bg);
+  --color-bg-subtle: var(--prizm-color-bg-subtle);
+  --color-bg-muted: var(--prizm-color-bg-muted);
+  --color-surface: var(--prizm-color-surface);
+  --color-surface-elevated: var(--prizm-color-surface-elevated);
+  --color-border: var(--prizm-color-border);
+  --color-border-strong: var(--prizm-color-border-strong);
+  --color-fg: var(--prizm-color-fg);
+  --color-fg-muted: var(--prizm-color-fg-muted);
+  --color-fg-subtle: var(--prizm-color-fg-subtle);
+  --color-accent: var(--prizm-color-accent);
+  --color-accent-fg: var(--prizm-color-accent-fg);
+  --color-accent-hover: var(--prizm-color-accent-hover);
+  --color-danger: var(--prizm-color-danger);
+  --color-danger-fg: var(--prizm-color-danger-fg);
+  --color-success: var(--prizm-color-success);
+  --color-warning: var(--prizm-color-warning);
+  --color-info: var(--prizm-color-info);
+
+  --radius-xs: var(--prizm-radius-xs);
+  --radius-sm: var(--prizm-radius-sm);
+  --radius-md: var(--prizm-radius-md);
+  --radius-lg: var(--prizm-radius-lg);
+  --radius-xl: var(--prizm-radius-xl);
+
+  --shadow-sm: var(--prizm-shadow-sm);
+  --shadow-md: var(--prizm-shadow-md);
+  --shadow-lg: var(--prizm-shadow-lg);
+}
+
+@layer base {
+  body {
+    background-color: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* PRIZM site-wide lucide stroke weight */
+  svg.lucide {
+    stroke-width: 1.5;
+  }
+}
+
+/* ============================================================
+   Live "Now" card — pulsing gradient border while recording.
+   A drifting accent→info→success→accent gradient, masked to a
+   thin ring, that gently breathes. Semantic tokens only; the
+   #000 in the mask is an alpha channel, not a UI colour.
+   ============================================================ */
+@keyframes now-border-drift {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 200% 50%; }
+}
+@keyframes now-border-pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+.now-card-live {
+  position: relative;
+}
+.now-card-live::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    110deg,
+    var(--color-accent),
+    var(--color-info),
+    var(--color-success),
+    var(--color-accent)
+  );
+  background-size: 200% 100%;
+  -webkit-mask:
+    linear-gradient(#000 0 0) content-box,
+    linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor;
+          mask-composite: exclude;
+  animation:
+    now-border-drift 5s linear infinite,
+    now-border-pulse 2.6s ease-in-out infinite;
+  pointer-events: none;
+}
+@media (prefers-reduced-motion: reduce) {
+  .now-card-live::before {
+    animation: none;
+    opacity: 0.85;
+  }
+}
+
+/* ============================================================
+   Animated hero mock (app/product) — a looping "live" demo.
+   The current-suggestion card fades in on each swap; the active
+   transcript line shows a blinking caret to imply live capture.
+   ============================================================ */
+@keyframes hero-swap-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.hero-swap {
+  animation: hero-swap-in 0.35s ease-out;
+}
+@keyframes hero-caret-blink {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0;
+  }
+}
+.hero-caret {
+  animation: hero-caret-blink 1s step-end infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-swap {
+    animation: none;
+  }
+  .hero-caret {
+    animation: none;
+    opacity: 0;
+  }
+}
