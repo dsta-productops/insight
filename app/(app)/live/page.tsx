@@ -14,6 +14,7 @@ import {
   HeartHandshake,
   ListChecks,
   MessageCircle,
+  MessageSquareQuote,
   MessagesSquare,
   Mic,
   Presentation,
@@ -26,8 +27,17 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { Heading } from "@/components/ui/heading";
-import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
 import { WavRecorder, type WavChunk } from "@/lib/wav-recorder";
@@ -594,7 +604,7 @@ export default function LivePage() {
           </div>
         </div>
       ) : (
-        <section className="grid gap-8 py-4 sm:py-8 lg:grid-cols-[1fr_320px] lg:items-start">
+        <section className="grid gap-8 py-4 sm:py-8 lg:grid-cols-[1fr_320px] lg:items-center">
           {/* Left: what INSIGHT does */}
           <div className="space-y-6">
             <div className="space-y-4">
@@ -602,10 +612,8 @@ export default function LivePage() {
                 Focus on the conversation
               </Heading>
               <Text variant="muted" size="lg" className="max-w-xl leading-relaxed">
-                INSIGHT is a live companion for your interviews and conversations.
-                As you talk, it offers real-time suggestions to help you go deeper:
-                a follow-up question to ask, a definition for a piece of jargon, or
-                relevant context that is meaningful to the conversation.
+                INSIGHT listens as you talk and surfaces the right follow-up, a
+                definition, or relevant context, right in the moment.
               </Text>
             </div>
 
@@ -651,6 +659,34 @@ export default function LivePage() {
                 {getMode(mode).blurb}
               </Text>
             </div>
+
+            <div className="max-w-sm space-y-2">
+              <Text size="xs" variant="subtle" className="uppercase tracking-wide">
+                Sharper suggestions with prep
+              </Text>
+              <div className="flex flex-col gap-2">
+                <NextLink
+                  href="/documents"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "w-full justify-start",
+                  )}
+                >
+                  <FileUp className="size-4" />
+                  Upload document
+                </NextLink>
+                <NextLink
+                  href="/glossary"
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "w-full justify-start",
+                  )}
+                >
+                  <BookPlus className="size-4" />
+                  Add glossary term
+                </NextLink>
+              </div>
+            </div>
           </div>
 
           {/* Right: start + prep */}
@@ -659,8 +695,7 @@ export default function LivePage() {
               <div className="space-y-1.5">
                 <Text weight="medium">Ready when you are</Text>
                 <Text size="sm" variant="muted" className="leading-relaxed">
-                  Press start and INSIGHT begins listening. End the session
-                  anytime.
+                  Press start and INSIGHT begins listening.
                 </Text>
               </div>
 
@@ -674,55 +709,57 @@ export default function LivePage() {
                 {finalizing ? "Saving…" : "Start session"}
               </Button>
 
-              <div className="flex items-start justify-between gap-3">
-                <div
-                  className="cursor-pointer space-y-0.5"
-                  onClick={() => setEphemeral((v) => !v)}
-                >
-                  <Text size="sm" weight="medium">
-                    Don&apos;t record this session
-                  </Text>
-                  <Text size="xs" variant="subtle" className="leading-relaxed">
-                    Transcription still runs live. Nothing is saved: the
-                    transcript, audio, and notes are discarded when you end.
-                  </Text>
-                </div>
-                <Switch
-                  checked={ephemeral}
-                  onCheckedChange={(v) => setEphemeral(v)}
-                  aria-label="Don't record this session"
-                  className="mt-0.5 shrink-0"
-                />
-              </div>
-
-              <Separator />
-
               <div className="space-y-2">
-                <Text size="xs" variant="subtle" className="uppercase tracking-wide">
-                  Sharper suggestions with prep
-                </Text>
-                <div className="flex flex-col gap-2">
-                  <NextLink
-                    href="/documents"
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                      "w-full justify-start",
-                    )}
+                <div className="flex items-start justify-between gap-3">
+                  <div
+                    className="cursor-pointer space-y-0.5"
+                    onClick={() => setEphemeral((v) => !v)}
                   >
-                    <FileUp className="size-4" />
-                    Upload document
-                  </NextLink>
-                  <NextLink
-                    href="/glossary"
-                    className={cn(
-                      buttonVariants({ variant: "outline", size: "sm" }),
-                      "w-full justify-start",
-                    )}
-                  >
-                    <BookPlus className="size-4" />
-                    Add glossary term
-                  </NextLink>
+                    <Text size="sm" weight="medium">
+                      Don&apos;t record this session
+                    </Text>
+                    <Text size="xs" variant="subtle" className="leading-relaxed">
+                      Transcription still runs live; nothing is saved when you
+                      end.
+                    </Text>
+                  </div>
+                  <Switch
+                    checked={ephemeral}
+                    onCheckedChange={(v) => setEphemeral(v)}
+                    aria-label="Don't record this session"
+                    className="mt-0.5 shrink-0"
+                  />
                 </div>
+
+                {/* Consent reminder: a script the researcher can read aloud to
+                    seek recording consent before starting. */}
+                <Dialog>
+                  <DialogTrigger className="inline-flex items-center gap-1.5 rounded-sm text-xs font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent">
+                    <MessageSquareQuote className="h-3.5 w-3.5" aria-hidden="true" />
+                    Consent reminder to read aloud
+                  </DialogTrigger>
+                  <DialogContent className="max-w-lg">
+                    <DialogHeader>
+                      <DialogTitle>Seek consent to record</DialogTitle>
+                      <DialogDescription>
+                        Read this aloud before you start, and wait for a clear
+                        yes.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <blockquote className="border-l-2 border-accent bg-bg-subtle px-4 py-3 text-sm leading-relaxed text-fg">
+                      &ldquo;Before we begin, I&apos;d like to record our
+                      conversation so I can give you my full attention instead of
+                      taking notes. The recording stays on my device and
+                      won&apos;t be shared beyond the people directly involved in
+                      this work. You can ask me to pause or stop at any time, and
+                      you&apos;re free to decline. It won&apos;t affect anything.
+                      Are you comfortable with me recording this session?&rdquo;
+                    </blockquote>
+                    <DialogFooter>
+                      <DialogClose render={<Button variant="outline">Done</Button>} />
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </CardContent>
           </Card>
