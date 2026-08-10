@@ -8,6 +8,7 @@ import {
   ChevronDown,
   CircleStop,
   ClipboardList,
+  Clock,
   Eye,
   EyeOff,
   FileUp,
@@ -162,6 +163,13 @@ function ts(sec: number): string {
   return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
 }
 
+/** Elapsed session time from milliseconds → "MM:SS", rolling to "H:MM:SS" past an hour. */
+function elapsed(ms: number): string {
+  const total = Math.max(0, Math.floor(ms / 1000));
+  if (total < 3600) return ts(total);
+  return `${Math.floor(total / 3600)}:${ts(total % 3600)}`;
+}
+
 /**
  * Dedup key for "have I already shown this?". Coach suggestions reuse a small
  * set of generic titles ("Neutralize embedded assumption", "Probe the underlying
@@ -178,6 +186,10 @@ function suggestionKey(s: Suggestion): string {
 export default function LivePage() {
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [recording, setRecording] = useState(false);
+  // Elapsed-session timer: startedAt is captured when recording begins; nowTick
+  // updates every second while recording so the interviewer always sees the time.
+  const [startedAt, setStartedAt] = useState<number | null>(null);
+  const [nowTick, setNowTick] = useState(0);
   const [starting, setStarting] = useState(false);
   const [finalizing, setFinalizing] = useState(false);
   // Conversation mode chosen at session start (drives the coach's framing).
@@ -243,6 +255,14 @@ export default function LivePage() {
     setImmersive(recording);
     return () => setImmersive(false);
   }, [recording, setImmersive]);
+
+  // Drive the elapsed-time display: tick once a second while recording.
+  useEffect(() => {
+    if (!recording || startedAt == null) return;
+    setNowTick(Date.now());
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [recording, startedAt]);
 
   /** Insert into history, deduped by suggestion key (safety net against
    *  double-adds); coach items key on the ask so distinct questions all survive. */
@@ -515,6 +535,7 @@ export default function LivePage() {
       const recorder = new WavRecorder((chunk) => void sendChunk(id, chunk));
       await recorder.start();
       recorderRef.current = recorder;
+      setStartedAt(Date.now());
       setRecording(true);
     } catch (e) {
       setError(
@@ -564,6 +585,8 @@ export default function LivePage() {
     ? "lg:max-h-[calc(100vh-6rem)]"
     : "lg:max-h-[calc(100vh-10rem)]";
   const ActiveModeIcon = MODE_ICONS[mode];
+  const elapsedLabel =
+    recording && startedAt != null ? elapsed(nowTick - startedAt) : null;
 
   return (
     <div className="space-y-8">
@@ -577,6 +600,16 @@ export default function LivePage() {
             </span>
           </div>
           <div className="flex items-center gap-3">
+            {elapsedLabel && (
+              <span
+                role="timer"
+                aria-label={`Elapsed session time ${elapsedLabel}`}
+                className="flex items-center gap-1.5 font-mono text-sm tabular-nums text-fg"
+              >
+                <Clock className="h-4 w-4 text-fg-muted" aria-hidden="true" />
+                {elapsedLabel}
+              </span>
+            )}
             {recording && ephemeral && (
               <span className="flex items-center gap-2 text-sm text-fg-muted">
                 <Badge variant="warning">Not recording</Badge>
@@ -734,10 +767,14 @@ export default function LivePage() {
                 {/* Consent reminder: a script the researcher can read aloud to
                     seek recording consent before starting. */}
                 <Dialog>
-                  <DialogTrigger className="inline-flex items-center gap-1.5 rounded-sm text-xs font-medium text-fg-muted transition-colors hover:text-fg focus-visible:outline-1 focus-visible:outline-offset-2 focus-visible:outline-accent">
-                    <MessageSquareQuote className="h-3.5 w-3.5" aria-hidden="true" />
-                    Consent reminder to read aloud
-                  </DialogTrigger>
+                  <DialogTrigger
+                    render={
+                      <Button variant="outline" size="sm" className="w-full justify-center gap-2">
+                        <MessageSquareQuote className="h-4 w-4" aria-hidden="true" />
+                        Read consent script
+                      </Button>
+                    }
+                  />
                   <DialogContent className="max-w-lg">
                     <DialogHeader>
                       <DialogTitle>Seek consent to record</DialogTitle>
