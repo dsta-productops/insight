@@ -7,7 +7,7 @@
     assets/      — READ-ONLY: whisper + llama models, coach corpus, seed glossary
     bin/         — node.exe, llama-server.exe (+DLLs), whisper-cli.exe, ffmpeg.exe
 
-  Then you run `npm run tauri:build` to get INSIGHT.exe / the NSIS+MSI installers.
+  Then you run `npm run tauri:build -- --bundles nsis` to get the NSIS INSIGHT.exe installer.
   Designed to run on a Windows machine OR a GitHub Actions `windows-latest` runner
   (see .github/workflows/windows-build.yml). Re-runnable; large downloads are
   cached in data/models and skipped if present.
@@ -178,4 +178,4 @@ Get-ChildItem $Res | ForEach-Object {
 }
 Write-Host ""
 Write-Host "Next: npm run tauri:build"
-Write-Host "Output: src-tauri\target\release\bundle\  (nsis\*.exe, msi\*.msi)"
+Write-Host "Output: src-tauri\target\release\bundle\nsis\*.exe"

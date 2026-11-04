@@ -22,7 +22,9 @@ which the included GitHub Actions workflow runs for you on a hosted runner.
 1. Push this repo to GitHub (see the data-safety note below).
 2. Actions tab → **Windows build** → **Run workflow**.
 3. Download the `insight-windows-installers` artifact — it contains the NSIS
-   `.exe` and the `.msi`.
+   `.exe` installer. (The WiX/MSI target is disabled: its `light.exe` linker
+   can't pack the ~5 GB bundled-model payload. NSIS handles it and is Tauri's
+   recommended Windows installer.)
 
 Pushing a `v*` tag (e.g. `git tag v0.1.0 && git push --tags`) also builds and
 attaches the installers to a GitHub Release.
@@ -35,8 +37,8 @@ Win 10/11). Then:
 ```powershell
 npm ci
 ./scripts/prepare-bundle-windows.ps1
-npm run tauri:build
-# Output: src-tauri\target\release\bundle\nsis\*.exe  and  msi\*.msi
+npm run tauri:build -- --bundles nsis
+# Output: src-tauri\target\release\bundle\nsis\*.exe
 ```
 
 ## Decisions baked in (change if needed)

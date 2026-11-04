@@ -1,6 +1,6 @@
 name: Windows build
 
-# INSIGHT's Windows (.exe / .msi) installer. A Tauri Windows build must be
+# INSIGHT's Windows (.exe) NSIS installer. A Tauri Windows build must be
 # compiled ON Windows (WebView2 + MSVC + NSIS/WiX), so this runs on a
 # windows-latest runner. Trigger manually from the Actions tab, or by pushing a
 # v* tag. The installer is uploaded as a build artifact (and attached to the
@@ -52,8 +52,13 @@ jobs:
         shell: pwsh
         run: ./scripts/prepare-bundle-windows.ps1 -LlamaFlavor ${{ github.event.inputs.llama_flavor || 'vulkan' }}
 
-      - name: Build Tauri app (.exe / .msi)
-        run: npm run tauri:build
+      # NSIS only. The WiX/MSI target's light.exe linker chokes on the ~5 GB
+      # bundled-model payload (CAB packing), whereas the NSIS .exe installer
+      # handles large payloads and is Tauri's recommended Windows installer.
+      # Overridden on the CLI so the shared tauri.conf.json targets:"all" still
+      # drives the macOS .app/.dmg build.
+      - name: Build Tauri app (.exe installer)
+        run: npm run tauri:build -- --bundles nsis
 
       - name: Upload installer artifacts
         uses: actions/upload-artifact@v4
@@ -62,7 +67,6 @@ jobs:
           if-no-files-found: error
           path: |
             src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
 
       # For tag builds, also attach the installers to a GitHub Release.
       - name: Attach to release
@@ -71,4 +75,3 @@ jobs:
         with:
           files: |
             src-tauri/target/release/bundle/nsis/*.exe
-            src-tauri/target/release/bundle/msi/*.msi
