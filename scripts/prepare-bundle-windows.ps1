@@ -118,10 +118,23 @@ if (-not (Test-Path (Join-Path $Bin "node.exe"))) {
 # llama-server.exe (+ its DLLs) — GitHub release, Windows $LlamaFlavor build.
 if (-not (Test-Path (Join-Path $Bin "llama-server.exe"))) {
   Write-Host "    fetching latest llama.cpp win-$LlamaFlavor-x64 release..."
-  $rel = Invoke-RestMethod -Uri "https://api.github.com/repos/ggml-org/llama.cpp/releases/latest" -Headers @{ "User-Agent" = "insight-build" }
-  $pattern = "bin-win-$LlamaFlavor-x64.zip"
-  $asset = $rel.assets | Where-Object { $_.name -like "*$pattern" } | Select-Object -First 1
-  if (-not $asset) { throw "no llama.cpp asset matching *$pattern in the latest release (asset naming may have changed)." }
+  # NOTE: /releases/latest points at a nightly-tag marker release that carries
+  # only nightly-tag.txt — no binaries. The real Windows builds are published as
+  # prereleases (tags like b12119), which /latest excludes. So scan the recent
+  # releases and take the newest that actually carries this flavor's x64 asset.
+  # Asset names look like  llama-<build>-bin-win-<flavor>[-<ver>]-x64.zip  (the
+  # CUDA ones embed a toolkit version, e.g. ...-cuda-13.4-x64.zip).
+  $pattern = "llama-*bin-win-$LlamaFlavor*-x64.zip"
+  $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30" -Headers @{ "User-Agent" = "insight-build" }
+  $asset = $null
+  foreach ($rel in $releases) {
+    $asset = $rel.assets |
+      Where-Object { $_.name -like $pattern -and $_.name -notlike "cudart-*" } |
+      Sort-Object name | Select-Object -First 1
+    if ($asset) { break }
+  }
+  if (-not $asset) { throw "no llama.cpp asset matching $pattern in the last 30 releases (asset naming may have changed)." }
+  Write-Host "    using $($asset.name)"
   $LlamaZip = Join-Path $Tmp "llama.zip"
   Get-File $asset.browser_download_url $LlamaZip
   Expand-Zip $LlamaZip (Join-Path $Tmp "llama")
