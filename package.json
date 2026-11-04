@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
-    "tauri:build": "tauri build"
+    "tauri:build": "tauri build",
+    "deploy": "URL=$(npx vercel --prod) && npx vercel alias set \"$URL\" insight.vercel.app && echo \"Aliased insight.vercel.app -> $URL\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.113.0",

@@ -7,19 +7,15 @@ import {
   Briefcase,
   ChevronDown,
   CircleStop,
-  ClipboardList,
   Clock,
   Eye,
   EyeOff,
   FileUp,
-  HeartHandshake,
   ListChecks,
   MessageCircle,
   MessageSquareQuote,
-  MessagesSquare,
   Mic,
   Presentation,
-  Users,
   UsersRound,
   X,
   type LucideIcon,
@@ -148,11 +144,7 @@ const MAX_HISTORY = 1000;
 /** Per-mode glyph for the picker (kept in the UI layer; the registry stays pure data). */
 const MODE_ICONS: Record<ModeId, LucideIcon> = {
   "user-research": MessageCircle,
-  "defence-psych": ClipboardList,
   "job-interview": Briefcase,
-  "staff-dialogue": MessagesSquare,
-  counselling: HeartHandshake,
-  meeting: Users,
   "table-discussion": UsersRound,
   "panel-moderation": Presentation,
 };
@@ -637,18 +629,20 @@ export default function LivePage() {
           </div>
         </div>
       ) : (
-        <section className="grid gap-8 py-4 sm:py-8 lg:grid-cols-[1fr_320px] lg:items-center">
+        <section className="space-y-8 py-4 sm:py-8">
+          {/* Heading sits above the columns so the card lines up with the
+              left content below it, not the tall H1 — keeps the two columns
+              the same height with minimal slack. */}
+          <Heading as="h1" size="4xl" className="tracking-tight">
+            Focus on the conversation
+          </Heading>
+          <div className="grid gap-8 lg:grid-cols-[1fr_320px] lg:items-stretch">
           {/* Left: what INSIGHT does */}
           <div className="space-y-6">
-            <div className="space-y-4">
-              <Heading as="h1" size="4xl" className="tracking-tight">
-                Focus on the conversation
-              </Heading>
-              <Text variant="muted" size="lg" className="max-w-xl leading-relaxed">
-                INSIGHT listens as you talk and surfaces the right follow-up, a
-                definition, or relevant context, right in the moment.
-              </Text>
-            </div>
+            <Text variant="muted" size="lg" className="max-w-xl leading-relaxed">
+              INSIGHT listens as you talk and surfaces the right follow-up, a
+              definition, or relevant context, right in the moment.
+            </Text>
 
             <div className="max-w-sm space-y-2">
               <Text size="xs" variant="subtle" className="uppercase tracking-wide">
@@ -723,8 +717,8 @@ export default function LivePage() {
           </div>
 
           {/* Right: start + prep */}
-          <Card>
-            <CardContent className="space-y-5 py-6">
+          <Card className="lg:flex lg:flex-col">
+            <CardContent className="space-y-5 py-6 lg:flex lg:flex-1 lg:flex-col lg:justify-center">
               <div className="space-y-1.5">
                 <Text weight="medium">Ready when you are</Text>
                 <Text size="sm" variant="muted" className="leading-relaxed">
@@ -800,6 +794,7 @@ export default function LivePage() {
               </div>
             </CardContent>
           </Card>
+          </div>
         </section>
       )}
 

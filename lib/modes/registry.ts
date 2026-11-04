@@ -21,12 +21,8 @@ export type ModeStatus = "available" | "coming-soon";
 export type ModeId =
   | "user-research"
   | "job-interview"
-  | "staff-dialogue"
-  | "counselling"
-  | "meeting"
   | "table-discussion"
-  | "panel-moderation"
-  | "defence-psych";
+  | "panel-moderation";
 
 export interface ModeProfile {
   id: ModeId;
@@ -63,39 +59,11 @@ export const MODES: ModeProfile[] = [
     blurb: "Interview users about a product or experience.",
   },
   {
-    id: "defence-psych",
-    label: "Research or assessment interview",
-    family: "research",
-    status: "coming-soon",
-    blurb: "Structured research or assessment interviews of subjects.",
-  },
-  {
     id: "job-interview",
     label: "Job interview",
     family: "consequential",
     status: "available",
     blurb: "Assess a candidate with fair, structured questions.",
-  },
-  {
-    id: "staff-dialogue",
-    label: "Staff dialogue",
-    family: "consequential",
-    status: "coming-soon",
-    blurb: "Performance and development conversations with a team member.",
-  },
-  {
-    id: "counselling",
-    label: "Staff counselling",
-    family: "consequential",
-    status: "coming-soon",
-    blurb: "Supportive one-to-one wellbeing conversations.",
-  },
-  {
-    id: "meeting",
-    label: "Meeting",
-    family: "facilitation",
-    status: "coming-soon",
-    blurb: "Keep a meeting on track and capture decisions and actions.",
   },
   {
     id: "table-discussion",

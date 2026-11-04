@@ -26,3 +26,6 @@ tsconfig.tsbuildinfo
 *.dmg
 .DS_Store
 .vercel
+
+# Local build/debug logs from the bundle + tauri scripts.
+scratchpad_*.log

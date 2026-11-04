@@ -86,24 +86,15 @@ const REDUCE_SCHEMA = {
  * and the exact sections to organize into. Everything stays extractive; a
  * section may be omitted if nothing fits. Modes not listed use DEFAULT.
  *
- * Two deliberate shapes stand apart from the theme-clustered default: MEETING
- * (decisions/actions minutes) and COUNSELLING (minimal + strictly factual, the
- * one mode where "more detail" would tip into assessment, which it must not do).
+ * Job-interview stands apart from the theme-clustered default: it organizes the
+ * candidate's evidence for review without scoring, ranking, or recommending.
  */
 const DEFAULT_REDUCE = `This was an interview or discussion. Group the points into 5-8 THEMES that reflect what was actually covered. Give each theme a short title, then list the substantive points under it (the specific views, reasons, and concrete examples). Keep the detail; do not collapse a theme to a single line.`;
 
 const REDUCE_BY_MODE: Partial<Record<ModeId, string>> = {
   "user-research": `This was a user-research interview. Organize into these sections (omit any with nothing to report): 'Themes discussed' (the topics and views raised, grouped), 'Pain points and frustrations', 'Needs and desired outcomes', 'Notable quotes or moments'.`,
 
-  "defence-psych": `This was a research interview. Produce a strictly FACTUAL record for the practitioner to review; this is NOT an assessment and must not interpret, rate, or draw conclusions about the person. Sections (omit any with nothing to report): 'Topics covered', 'Experiences and incidents described', 'Stated attitudes and concerns', 'Notable statements'.`,
-
   "job-interview": `This was a job interview. Organize the EVIDENCE the candidate gave, for the interviewer to review. Do NOT score, rank, recommend, or state a hiring conclusion, and never include anything about protected or personal characteristics. Sections (omit any with nothing to report): 'Background and experience', 'Evidence by theme' (the concrete examples/STAR stories the candidate gave), 'Specific outcomes and results mentioned', 'Questions the candidate asked'.`,
-
-  "staff-dialogue": `This was a workplace 1:1 / staff dialogue. Sections (omit any with nothing to report): 'Topics discussed', 'Concerns and issues raised', 'Agreements and commitments made', 'Follow-up actions'. Only attribute a commitment to a person if the transcript names them.`,
-
-  counselling: `This was a counselling conversation. Keep the recap MINIMAL and strictly factual, in the person's own framing. Do NOT interpret, characterize, assess, or infer emotional or psychological states. Sections (omit any with nothing to report): 'Topics the session covered', 'Stated concerns or goals', 'Agreed next steps'.`,
-
-  meeting: `This was a meeting. Produce minutes. Sections (omit any with nothing to report): 'Topics discussed', 'Decisions made', 'Action items' (include an owner and/or due date ONLY if the transcript states them), 'Open questions'.`,
 
   "table-discussion": `This was a small-group discussion or focus group. Organize into 5-8 THEMES reflecting what the group discussed, each with its substantive points, plus a final 'Notable examples' section. Do not label points as agreement or disagreement (the transcript is not speaker-attributed).`,
 
