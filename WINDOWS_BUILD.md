@@ -63,9 +63,12 @@ npm run tauri:build -- --bundles nsis
   (DMG has no such limit). Consequence: during install the parts and the
   assembled file briefly coexist, so **~10 GB of free disk is needed at install
   time** (steady-state footprint is ~5 GB).
-- **NSIS compression is off** (`compression: "none"`). The GGUF is already
-  quantized/incompressible, so LZMA would add tens of minutes and heavy memory
-  use for near-zero size savings.
+- **NSIS compression = zlib** (`compression: "zlib"`). The GGUF is already
+  quantized/incompressible, so the point is speed, not ratio: zlib is fast and
+  low-memory (LZMA would add tens of minutes for ~0 savings). `"none"` is NOT
+  usable — makensis's uncompressed path mmaps each file in 32 MB windows and
+  mishandles the final partial window, failing on any bundled file whose size
+  isn't an exact 32 MB multiple (e.g. the whisper model).
 - **Installer target is NSIS only** (`--bundles nsis`); the WiX/MSI `light.exe`
   linker can't pack the multi-GB payload into a CAB.
 - **Per-user install** (`installMode: currentUser`) — installs under
