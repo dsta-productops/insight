@@ -1,10 +1,12 @@
 name: Windows build
 
-# INSIGHT's Windows (.exe) NSIS installer. A Tauri Windows build must be
-# compiled ON Windows (WebView2 + MSVC + NSIS/WiX), so this runs on a
-# windows-latest runner. Trigger manually from the Actions tab, or by pushing a
-# v* tag. The installer is uploaded as a build artifact (and attached to the
-# release for tag builds).
+# INSIGHT's Windows installer: a 7-Zip self-extracting .exe. A Tauri Windows
+# build must be compiled ON Windows (WebView2 + MSVC), so this runs on a
+# windows-latest runner. Tauri's own NSIS/MSI bundlers can't package the ~5 GB
+# model payload, so we build the app unbundled and wrap it in an SFX (see
+# scripts/package-sfx-windows.ps1 and WINDOWS_BUILD.md). Trigger manually from the
+# Actions tab, or by pushing a v* tag. The installer is uploaded as a build
+# artifact (and attached to the release for tag builds).
 on:
   workflow_dispatch:
     inputs:
@@ -56,26 +58,26 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/prepare-bundle-windows.ps1 -LlamaFlavor ${{ github.event.inputs.llama_flavor || 'vulkan' }}
 
-      # NSIS only. The WiX/MSI target's light.exe linker chokes on the ~5 GB
-      # bundled-model payload (CAB packing), whereas the NSIS .exe installer
-      # handles large payloads and is Tauri's recommended Windows installer.
-      # Overridden on the CLI so the shared tauri.conf.json targets:"all" still
-      # drives the macOS .app/.dmg build.
-      - name: Build Tauri app (.exe installer)
-        run: npm run tauri:build -- --bundles nsis
+      # Build the app and wrap it in a 7-Zip self-extracting installer. Tauri's
+      # own NSIS/MSI bundlers can't package the ~5 GB model payload (WiX CAB limit;
+      # 32-bit makensis's ~2 GB output wall), so we ship an SFX, which has no such
+      # limit. See WINDOWS_BUILD.md.
+      - name: Build app + 7-Zip self-extracting installer
+        shell: pwsh
+        run: ./scripts/package-sfx-windows.ps1
 
-      - name: Upload installer artifacts
+      - name: Upload installer artifact
         uses: actions/upload-artifact@v4
         with:
-          name: insight-windows-installers
+          name: insight-windows-installer
           if-no-files-found: error
           path: |
-            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/sfx/INSIGHT_*_x64-setup.exe
 
-      # For tag builds, also attach the installers to a GitHub Release.
+      # For tag builds, also attach the installer to a GitHub Release.
       - name: Attach to release
         if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: |
-            src-tauri/target/release/bundle/nsis/*.exe
+            src-tauri/target/release/sfx/INSIGHT_*_x64-setup.exe

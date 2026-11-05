@@ -7,7 +7,8 @@
     assets/      — READ-ONLY: whisper + llama models, coach corpus, seed glossary
     bin/         — node.exe, llama-server.exe (+DLLs), whisper-cli.exe, ffmpeg.exe
 
-  Then you run `npm run tauri:build -- --bundles nsis` to get the NSIS INSIGHT.exe installer.
+  Then you run `scripts/package-sfx-windows.ps1` to build the app and wrap it in
+  a 7-Zip self-extracting INSIGHT_<ver>_x64-setup.exe.
   Designed to run on a Windows machine OR a GitHub Actions `windows-latest` runner
   (see .github/workflows/windows-build.yml). Re-runnable; large downloads are
   cached in data/models and skipped if present.
@@ -55,40 +56,6 @@ function Expand-Zip([string]$Zip, [string]$Dest) {
   Expand-Archive -Path $Zip -DestinationPath $Dest -Force
 }
 
-# makensis can't mmap a source file past ~512 MB — it dies with "Internal
-# compiler error #12345: error mmapping file ... is out of range". So any bundled
-# file over that size is split into <=$Chunk parts (<BaseName>.000, .001, ...)
-# and the NSIS postinstall hook (src-tauri/installer-hooks.nsh) concatenates them
-# back at install time. macOS (prepare-bundle.sh) copies whole files; only the
-# Windows installer splits. Returns the number of parts written.
-function Split-LargeFile([string]$SrcPath, [string]$DestDir, [string]$BaseName, [long]$Chunk) {
-  $in = [System.IO.File]::OpenRead($SrcPath)
-  try {
-    $buf = [byte[]]::new(64MB)
-    $idx = 0
-    while ($in.Position -lt $in.Length) {
-      $partPath = Join-Path $DestDir ("{0}.{1:000}" -f $BaseName, $idx)
-      $out = [System.IO.File]::Create($partPath)
-      try {
-        $written = [long]0
-        while ($written -lt $Chunk) {
-          $toRead = [Math]::Min([long]$buf.Length, $Chunk - $written)
-          $read = $in.Read($buf, 0, [int]$toRead)
-          if ($read -le 0) { break }
-          $out.Write($buf, 0, $read)
-          $written += $read
-        }
-      } finally { $out.Dispose() }
-      Write-Host ("      wrote {0} ({1:N0} MB)" -f (Split-Path $partPath -Leaf), ((Get-Item $partPath).Length / 1MB))
-      $idx++
-    }
-  } finally { $in.Dispose() }
-  return $idx
-}
-
-# Part size for the model split. Kept well under makensis's ~512 MB mmap ceiling.
-$ModelChunk = 400MB
-
 # ---- 1/4  Next standalone server -------------------------------------------
 Write-Host "==> 1/4  Building the Next standalone server"
 npm run build
@@ -123,23 +90,18 @@ if (-not (Test-Path $WhisperSrc)) {
   New-Item -ItemType Directory -Force -Path "data\models" | Out-Null
   Get-File "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$WhisperModel" $WhisperSrc
 }
-# Whisper model (~0.57 GB) — over makensis's mmap ceiling, so split it too. The
-# installer reassembles it; the runtime model auto-pick scans for *.bin, so the
-# .NNN parts are ignored even if a reassembly ever left one behind.
-Write-Host "    splitting whisper model into <=400 MB parts for the NSIS installer..."
-$wn = Split-LargeFile (Join-Path $Root $WhisperSrc) $AssetsModels $WhisperModel $ModelChunk
-Write-Host "    whisper split into $wn part(s)."
+# Models are bundled WHOLE. The Windows app ships as a 7-Zip self-extracting
+# .exe (scripts/package-sfx-windows.ps1), which has no file-size limit — unlike
+# Tauri's NSIS/MSI bundlers, which can't package this ~5 GB payload. So no split.
+Copy-Item -Force (Join-Path $Root $WhisperSrc) (Join-Path $AssetsModels $WhisperModel)
 
-# llama GGUF (~4.9 GB) — filename must match src-tauri/src/lib.rs. Split the same
-# way; the NSIS postinstall hook (src-tauri/installer-hooks.nsh) reassembles both.
+# llama GGUF (~4.9 GB) — filename must match src-tauri/src/lib.rs.
 $LlamaCache = "data\models\llama-3.1-8b-instruct.gguf"
 if (-not (Test-Path $LlamaCache)) {
   Write-Host "    downloading llama 3.1 8B GGUF (~4.9 GB, one time)..."
   Get-File $LlamaModelUrl $LlamaCache
 }
-Write-Host "    splitting llama GGUF into <=400 MB parts for the NSIS installer..."
-$ln = Split-LargeFile (Join-Path $Root $LlamaCache) $AssetsModels "llama-3.1-8b-instruct.gguf" $ModelChunk
-Write-Host "    llama split into $ln part(s); the installer will reassemble both models."
+Copy-Item -Force (Join-Path $Root $LlamaCache) (Join-Path $AssetsModels "llama-3.1-8b-instruct.gguf")
 
 # ---- 3/4  Binaries ----------------------------------------------------------
 Write-Host "==> 3/4  Staging binaries into resources\bin"
@@ -227,5 +189,4 @@ Get-ChildItem $Res | ForEach-Object {
   "{0,-14} {1:N0} MB" -f $_.Name, ($size / 1MB)
 }
 Write-Host ""
-Write-Host "Next: npm run tauri:build"
-Write-Host "Output: src-tauri\target\release\bundle\nsis\*.exe"
+Write-Host "Next: scripts/package-sfx-windows.ps1  (builds the app + the SFX .exe)"
