@@ -55,14 +55,16 @@ npm run tauri:build -- --bundles nsis
   audio to 16 kHz mono WAV; live capture is already 16 kHz WAV from the browser.
 - **Models (~5 GB) are bundled**, matching the macOS build. CI caches them so
   only the first run pays the Hugging Face download; the installer is ~5 GB.
-- **The 4.7 GB Llama GGUF is split into <2 GB parts** (`...gguf.000`, `.001`, …)
-  because `makensis` can't embed a single file larger than ~2 GB. The bundler
-  does the split; the NSIS **postinstall hook** (`src-tauri/installer-hooks.nsh`,
-  wired via `bundle.windows.nsis.installerHooks`) concatenates them back into the
-  one file `lib.rs` expects and deletes the parts. macOS bundles the whole file
-  (DMG has no such limit). Consequence: during install the parts and the
-  assembled file briefly coexist, so **~10 GB of free disk is needed at install
-  time** (steady-state footprint is ~5 GB).
+- **Both models are split into ≤400 MB parts** (`...gguf.000`, `...bin.000`, …)
+  because `makensis` can't mmap a source file past ~512 MB (it dies with
+  "Internal compiler error #12345: error mmapping file … is out of range"). This
+  bites the 4.7 GB Llama GGUF *and* the ~0.57 GB whisper model. The bundler does
+  the split; the NSIS **postinstall hook** (`src-tauri/installer-hooks.nsh`,
+  wired via `bundle.windows.nsis.installerHooks`) concatenates each model's parts
+  back into the one file the app expects and deletes the parts. macOS bundles the
+  whole files (DMG has no such limit). Consequence: during install the parts and
+  the assembled files briefly coexist, so **~10 GB of free disk is needed at
+  install time** (steady-state footprint is ~5 GB).
 - **NSIS compression = zlib** (`compression: "zlib"`). The GGUF is already
   quantized/incompressible, so the point is speed, not ratio: zlib is fast and
   low-memory (LZMA would add tens of minutes for ~0 savings). `"none"` is NOT

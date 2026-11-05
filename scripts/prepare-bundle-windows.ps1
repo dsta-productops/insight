@@ -55,6 +55,40 @@ function Expand-Zip([string]$Zip, [string]$Dest) {
   Expand-Archive -Path $Zip -DestinationPath $Dest -Force
 }
 
+# makensis can't mmap a source file past ~512 MB — it dies with "Internal
+# compiler error #12345: error mmapping file ... is out of range". So any bundled
+# file over that size is split into <=$Chunk parts (<BaseName>.000, .001, ...)
+# and the NSIS postinstall hook (src-tauri/installer-hooks.nsh) concatenates them
+# back at install time. macOS (prepare-bundle.sh) copies whole files; only the
+# Windows installer splits. Returns the number of parts written.
+function Split-LargeFile([string]$SrcPath, [string]$DestDir, [string]$BaseName, [long]$Chunk) {
+  $in = [System.IO.File]::OpenRead($SrcPath)
+  try {
+    $buf = [byte[]]::new(64MB)
+    $idx = 0
+    while ($in.Position -lt $in.Length) {
+      $partPath = Join-Path $DestDir ("{0}.{1:000}" -f $BaseName, $idx)
+      $out = [System.IO.File]::Create($partPath)
+      try {
+        $written = [long]0
+        while ($written -lt $Chunk) {
+          $toRead = [Math]::Min([long]$buf.Length, $Chunk - $written)
+          $read = $in.Read($buf, 0, [int]$toRead)
+          if ($read -le 0) { break }
+          $out.Write($buf, 0, $read)
+          $written += $read
+        }
+      } finally { $out.Dispose() }
+      Write-Host ("      wrote {0} ({1:N0} MB)" -f (Split-Path $partPath -Leaf), ((Get-Item $partPath).Length / 1MB))
+      $idx++
+    }
+  } finally { $in.Dispose() }
+  return $idx
+}
+
+# Part size for the model split. Kept well under makensis's ~512 MB mmap ceiling.
+$ModelChunk = 400MB
+
 # ---- 1/4  Next standalone server -------------------------------------------
 Write-Host "==> 1/4  Building the Next standalone server"
 npm run build
@@ -89,42 +123,23 @@ if (-not (Test-Path $WhisperSrc)) {
   New-Item -ItemType Directory -Force -Path "data\models" | Out-Null
   Get-File "https://huggingface.co/ggerganov/whisper.cpp/resolve/main/$WhisperModel" $WhisperSrc
 }
-Copy-Item -Force $WhisperSrc (Join-Path $AssetsModels $WhisperModel)
+# Whisper model (~0.57 GB) — over makensis's mmap ceiling, so split it too. The
+# installer reassembles it; the runtime model auto-pick scans for *.bin, so the
+# .NNN parts are ignored even if a reassembly ever left one behind.
+Write-Host "    splitting whisper model into <=400 MB parts for the NSIS installer..."
+$wn = Split-LargeFile (Join-Path $Root $WhisperSrc) $AssetsModels $WhisperModel $ModelChunk
+Write-Host "    whisper split into $wn part(s)."
 
-# llama GGUF (~4.9 GB) — filename must match src-tauri/src/lib.rs.
+# llama GGUF (~4.9 GB) — filename must match src-tauri/src/lib.rs. Split the same
+# way; the NSIS postinstall hook (src-tauri/installer-hooks.nsh) reassembles both.
 $LlamaCache = "data\models\llama-3.1-8b-instruct.gguf"
 if (-not (Test-Path $LlamaCache)) {
   Write-Host "    downloading llama 3.1 8B GGUF (~4.9 GB, one time)..."
   Get-File $LlamaModelUrl $LlamaCache
 }
-# makensis can't embed a single file >~2 GB (it mmaps the file whole), so split
-# the GGUF into <2 GB parts named ...gguf.000, .001, ...  The NSIS postinstall
-# hook (src-tauri/installer-hooks.nsh) concatenates them back on install. The
-# macOS bundler (prepare-bundle.sh) copies the whole file; only Windows splits.
-Write-Host "    splitting llama GGUF into <2 GB parts for the NSIS installer..."
-$ChunkSize = 1600MB   # < 2^31 bytes, the makensis per-file ceiling
-$in = [System.IO.File]::OpenRead((Join-Path $Root $LlamaCache))
-try {
-  $buf = [byte[]]::new(64MB)
-  $idx = 0
-  while ($in.Position -lt $in.Length) {
-    $partPath = Join-Path $AssetsModels ("llama-3.1-8b-instruct.gguf.{0:000}" -f $idx)
-    $out = [System.IO.File]::Create($partPath)
-    try {
-      $written = [long]0
-      while ($written -lt $ChunkSize) {
-        $toRead = [Math]::Min([long]$buf.Length, $ChunkSize - $written)
-        $read = $in.Read($buf, 0, [int]$toRead)
-        if ($read -le 0) { break }
-        $out.Write($buf, 0, $read)
-        $written += $read
-      }
-    } finally { $out.Dispose() }
-    Write-Host ("      wrote {0} ({1:N0} MB)" -f (Split-Path $partPath -Leaf), ((Get-Item $partPath).Length / 1MB))
-    $idx++
-  }
-} finally { $in.Dispose() }
-Write-Host "    split into $idx part(s); the installer will reassemble them."
+Write-Host "    splitting llama GGUF into <=400 MB parts for the NSIS installer..."
+$ln = Split-LargeFile (Join-Path $Root $LlamaCache) $AssetsModels "llama-3.1-8b-instruct.gguf" $ModelChunk
+Write-Host "    llama split into $ln part(s); the installer will reassemble both models."
 
 # ---- 3/4  Binaries ----------------------------------------------------------
 Write-Host "==> 3/4  Staging binaries into resources\bin"
