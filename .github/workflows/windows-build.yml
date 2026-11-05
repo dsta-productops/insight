@@ -50,6 +50,10 @@ jobs:
 
       - name: Stage bundle resources (server, models, binaries)
         shell: pwsh
+        # GITHUB_TOKEN authenticates the script's llama.cpp releases-API lookup;
+        # the runners' shared-IP anonymous API limit is otherwise exhausted.
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: ./scripts/prepare-bundle-windows.ps1 -LlamaFlavor ${{ github.event.inputs.llama_flavor || 'vulkan' }}
 
       # NSIS only. The WiX/MSI target's light.exe linker chokes on the ~5 GB

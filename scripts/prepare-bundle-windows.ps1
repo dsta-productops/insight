@@ -152,7 +152,15 @@ if (-not (Test-Path (Join-Path $Bin "llama-server.exe"))) {
   # Asset names look like  llama-<build>-bin-win-<flavor>[-<ver>]-x64.zip  (the
   # CUDA ones embed a toolkit version, e.g. ...-cuda-13.4-x64.zip).
   $pattern = "llama-*bin-win-$LlamaFlavor*-x64.zip"
-  $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30" -Headers @{ "User-Agent" = "insight-build" }
+  # Authenticate the API call when a token is present. GitHub Actions runners
+  # share a NAT IP whose UNauthenticated limit (60/hr) is almost always spent,
+  # so an anonymous call here fails with "API rate limit exceeded". The workflow
+  # passes GITHUB_TOKEN; authenticated calls get 5,000/hr. Falls back to anon
+  # for a local run with no token (fine against the per-user limit).
+  $ghHeaders = @{ "User-Agent" = "insight-build" }
+  $ghToken = if ($env:GITHUB_TOKEN) { $env:GITHUB_TOKEN } else { $env:GH_TOKEN }
+  if ($ghToken) { $ghHeaders["Authorization"] = "Bearer $ghToken" }
+  $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ggml-org/llama.cpp/releases?per_page=30" -Headers $ghHeaders
   $asset = $null
   foreach ($rel in $releases) {
     $asset = $rel.assets |
