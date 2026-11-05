@@ -18,8 +18,12 @@ const nextConfig = {
   // the whole data/ dir (incl. ~700 MB of Whisper models) into
   // .next/standalone/data. Models/corpus ship as controlled bundle resources
   // (ASSETS_DIR); writable data lives in the OS app-data dir (DATA_DIR).
+  // The "**/data/**" variant is for Windows: the bare "data/**" glob fails to
+  // match the tracer's backslash-separated paths there, so without it the ~5 GB
+  // of models leak into .next/standalone on windows-latest. See the matching
+  // prune in scripts/prepare-bundle-windows.ps1.
   outputFileTracingExcludes: {
-    "*": ["data/**"],
+    "*": ["data/**", "**/data/**"],
   },
 
   ...(microsite

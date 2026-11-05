@@ -75,6 +75,19 @@ $LibDst = Join-Path $Standalone "node_modules\next\dist\lib"
 New-Item -ItemType Directory -Force -Path $LibDst | Out-Null
 Copy-Item -Recurse -Force "node_modules\next\dist\lib\*" $LibDst
 
+# Belt-and-suspenders: Next's file tracer (nft) tries to pull the whole
+# data/models dir into standalone because lib/transcribe/providers.ts reads it
+# with a dynamic path. next.config.mjs excludes it via outputFileTracingExcludes,
+# but that glob silently fails to match on Windows' backslash trace paths, so the
+# ~5 GB of models leak into .next\standalone\data here and get bundled TWICE
+# (also in assets\). The models only ever ship via assets\, so prune any data\
+# dir that slipped into standalone. Without this the installer doubles to ~10 GB.
+$StandaloneData = Join-Path $Standalone "data"
+if (Test-Path $StandaloneData) {
+  Write-Host "    pruning data\ that file-tracing leaked into standalone"
+  Remove-Item -Recurse -Force $StandaloneData
+}
+
 # ---- 2/4  Read-only assets (models, coach corpus, seed glossary) -----------
 Write-Host "==> 2/4  Staging read-only assets"
 $Assets = Join-Path $Res "assets"

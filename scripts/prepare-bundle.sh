@@ -56,6 +56,12 @@ cp -R .next/static "$RES/standalone/.next/static"
 # dir from the installed package so the server actually starts. (2026-07-30)
 cp -R node_modules/next/dist/lib/. "$RES/standalone/node_modules/next/dist/lib/"
 
+# Belt-and-suspenders: nft tries to pull data/models into standalone (dynamic
+# read in lib/transcribe/providers.ts). next.config.mjs excludes it and that
+# works on macOS, but prune defensively so the ~5 GB models can never get
+# bundled twice (also in assets/). Mirrors the Windows bundler. (2026-11-05)
+rm -rf "$RES/standalone/data"
+
 echo "==> 2/4  Staging read-only assets (models, coach corpus, seed glossary)"
 rm -rf "$RES/assets"
 mkdir -p "$RES/assets/models"
