@@ -97,7 +97,34 @@ if (-not (Test-Path $LlamaCache)) {
   Write-Host "    downloading llama 3.1 8B GGUF (~4.9 GB, one time)..."
   Get-File $LlamaModelUrl $LlamaCache
 }
-Copy-Item -Force $LlamaCache (Join-Path $AssetsModels "llama-3.1-8b-instruct.gguf")
+# makensis can't embed a single file >~2 GB (it mmaps the file whole), so split
+# the GGUF into <2 GB parts named ...gguf.000, .001, ...  The NSIS postinstall
+# hook (src-tauri/installer-hooks.nsh) concatenates them back on install. The
+# macOS bundler (prepare-bundle.sh) copies the whole file; only Windows splits.
+Write-Host "    splitting llama GGUF into <2 GB parts for the NSIS installer..."
+$ChunkSize = 1600MB   # < 2^31 bytes, the makensis per-file ceiling
+$in = [System.IO.File]::OpenRead((Join-Path $Root $LlamaCache))
+try {
+  $buf = [byte[]]::new(64MB)
+  $idx = 0
+  while ($in.Position -lt $in.Length) {
+    $partPath = Join-Path $AssetsModels ("llama-3.1-8b-instruct.gguf.{0:000}" -f $idx)
+    $out = [System.IO.File]::Create($partPath)
+    try {
+      $written = [long]0
+      while ($written -lt $ChunkSize) {
+        $toRead = [Math]::Min([long]$buf.Length, $ChunkSize - $written)
+        $read = $in.Read($buf, 0, [int]$toRead)
+        if ($read -le 0) { break }
+        $out.Write($buf, 0, $read)
+        $written += $read
+      }
+    } finally { $out.Dispose() }
+    Write-Host ("      wrote {0} ({1:N0} MB)" -f (Split-Path $partPath -Leaf), ((Get-Item $partPath).Length / 1MB))
+    $idx++
+  }
+} finally { $in.Dispose() }
+Write-Host "    split into $idx part(s); the installer will reassemble them."
 
 # ---- 3/4  Binaries ----------------------------------------------------------
 Write-Host "==> 3/4  Staging binaries into resources\bin"
