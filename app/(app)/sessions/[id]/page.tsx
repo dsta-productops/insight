@@ -5,6 +5,7 @@ import NextLink from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, Check, Download, History, ListChecks, Maximize, Pencil, Sparkles, Trash2, Users, X } from "lucide-react";
 import { stripListMarker } from "@/lib/utils";
+import { GlossaryText, useGlossary } from "@/components/glossary-text";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { RecapCompare, type RecapVersionLike } from "@/components/recap-compare";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -105,6 +106,7 @@ export default function SessionDetailPage({
 }) {
   const { id } = use(params);
   const router = useRouter();
+  const glossaryTerms = useGlossary();
   const [session, setSession] = useState<SessionMeta | null>(null);
   const [transcript, setTranscript] = useState<TranscriptDoc | null>(null);
   const [suggestions, setSuggestions] = useState<SuggestionLogEntry[]>([]);
@@ -851,7 +853,7 @@ export default function SessionDetailPage({
                         {SPEAKER_LABEL[row.seg.speaker!]}
                       </Text>
                     )}
-                    <Text size="sm">{row.seg.text}</Text>
+                    <Text size="sm"><GlossaryText text={row.seg.text} terms={glossaryTerms} /></Text>
                   </div>
                 </div>
               );

@@ -50,6 +50,7 @@ import {
 import { Switch } from "@/components/ui/switch";
 import { DEFAULT_MODE, getMode, isAvailableMode, modesByFamily, type ModeId } from "@/lib/modes/registry";
 import { cn, stripListMarker } from "@/lib/utils";
+import { GlossaryText, useGlossary } from "@/components/glossary-text";
 
 interface Segment {
   start: number;
@@ -212,6 +213,7 @@ export default function LivePage() {
   const [segments, setSegments] = useState<Segment[]>([]);
   const [pendingChunks, setPendingChunks] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  const glossaryTerms = useGlossary();
   const [glossaryMatches, setGlossaryMatches] = useState<GlossaryEntry[]>([]);
   const [current, setCurrent] = useState<Suggestion | null>(null);
   const [history, setHistory] = useState<Suggestion[]>([]);
@@ -1024,7 +1026,7 @@ export default function LivePage() {
                         {ts(seg.start)}
                       </Text>
                       <Text size="sm" variant="muted">
-                        {seg.text}
+                        <GlossaryText text={seg.text} terms={glossaryTerms} />
                       </Text>
                     </div>
                   ))}

@@ -32,6 +32,8 @@
   --color-success: var(--prizm-color-success);
   --color-warning: var(--prizm-color-warning);
   --color-info: var(--prizm-color-info);
+  /* Project-level addition (not in PRIZM): marker-yellow for glossary-term highlights. */
+  --color-highlight: oklch(91% 0.17 100);
 
   --radius-xs: var(--prizm-radius-xs);
   --radius-sm: var(--prizm-radius-sm);
