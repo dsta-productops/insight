@@ -90,6 +90,8 @@ export interface SummaryDoc {
    * recap exists it is rendered instead, with `bullets` as the fallback.
    */
   sections?: RecapSection[];
+  /** ISO timestamp of the researcher's last manual edit, if the recap was hand-edited. */
+  editedAt?: string;
 }
 
 type SummaryProvider = "ollama" | "llamacpp" | "anthropic" | "groq";

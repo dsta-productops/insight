@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSession, readTranscript } from "@/lib/transcribe/sessions";
-import { readSummary, writeSummary } from "@/lib/summary/store";
+import { pushHistory, readSummary, writeSummary } from "@/lib/summary/store";
 import type { SummaryDoc } from "@/lib/summary";
 import { generateRecap, recapProviderName } from "@/lib/recap";
 import { recapToMarkdown } from "@/lib/export/session";
@@ -98,6 +98,8 @@ export async function POST(
             bullets: existing?.bullets ?? [],
             sections,
           };
+          // Keep the recap being replaced so versions can be compared/restored.
+          if (existing?.sections?.length) await pushHistory(existing);
           await writeSummary(doc);
           send({ summary: doc });
         }

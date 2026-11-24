@@ -3,9 +3,10 @@
 import { use, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import NextLink from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Check, Download, ListChecks, Maximize, Pencil, Sparkles, Trash2, Users, X } from "lucide-react";
+import { ArrowLeft, Check, Download, History, ListChecks, Maximize, Pencil, Sparkles, Trash2, Users, X } from "lucide-react";
 import { stripListMarker } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
+import { RecapCompare, type RecapVersionLike } from "@/components/recap-compare";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -15,6 +16,7 @@ import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import { Spinner } from "@/components/ui/spinner";
 import { Text } from "@/components/ui/text";
+import { Textarea } from "@/components/ui/textarea";
 
 type Speaker = "researcher" | "participant";
 
@@ -71,6 +73,7 @@ interface SummaryDoc {
   provider?: string;
   bullets: string[];
   sections?: RecapSection[];
+  editedAt?: string;
 }
 
 const TYPE_BADGE: Record<Suggestion["type"], "info" | "success" | "outline"> = {
@@ -121,6 +124,16 @@ export default function SessionDetailPage({
   const [pendingDelete, setPendingDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [presenting, setPresenting] = useState(false);
+  // Hand-editing the recap. Points/bullets are edited as one-per-line text.
+  const [recapEditing, setRecapEditing] = useState(false);
+  const [draftSections, setDraftSections] = useState<{ title: string; points: string }[]>([]);
+  const [draftBullets, setDraftBullets] = useState("");
+  const [savingRecap, setSavingRecap] = useState(false);
+  const [confirmRegen, setConfirmRegen] = useState(false);
+  // Version history + compare.
+  const [showVersions, setShowVersions] = useState(false);
+  const [versions, setVersions] = useState<RecapVersionLike[] | null>(null);
+  const [restoring, setRestoring] = useState(false);
   const audioRef = useRef<HTMLAudioElement>(null);
 
   // Presentation mode: a scaled, maximized scroll of the recap for showing on a
@@ -256,6 +269,89 @@ export default function SessionDetailPage({
       setRegenerating(false);
       setRegenProgress(null);
     }
+  }
+
+  const loadVersions = useCallback(async () => {
+    try {
+      const r = await fetch(`/api/sessions/${id}/summary/versions`);
+      const json = await r.json();
+      setVersions(json.versions ?? []);
+    } catch {
+      setVersions([]);
+    }
+  }, [id]);
+
+  // Refresh the list when the panel is open and the current recap changes
+  // (regenerate / edit / restore each set the previous one aside).
+  useEffect(() => {
+    if (showVersions) void loadVersions();
+  }, [showVersions, summary?.updatedAt, loadVersions]);
+
+  async function onRestoreVersion(versionId: string) {
+    setRestoring(true);
+    setRegenError(null);
+    try {
+      const r = await fetch(`/api/sessions/${id}/summary/versions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ restore: versionId }),
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.error ?? `Restore failed (${r.status}).`);
+      setSummary(json.summary);
+    } catch (e) {
+      setRegenError(e instanceof Error ? e.message : "Restoring the version failed.");
+    } finally {
+      setRestoring(false);
+    }
+  }
+
+  function startRecapEdit() {
+    if (!summary) return;
+    setRegenError(null);
+    if (summary.sections && summary.sections.length > 0) {
+      setDraftSections(
+        summary.sections.map((sec) => ({
+          title: sec.title,
+          points: sec.points.map(stripListMarker).join("\n"),
+        })),
+      );
+    } else {
+      setDraftBullets(summary.bullets.map(stripListMarker).join("\n"));
+    }
+    setRecapEditing(true);
+  }
+
+  async function saveRecapEdit() {
+    if (!summary) return;
+    const lines = (t: string) => t.split("\n").map((l) => stripListMarker(l).trim()).filter(Boolean);
+    const body =
+      summary.sections && summary.sections.length > 0
+        ? { sections: draftSections.map((d) => ({ title: d.title.trim(), points: lines(d.points) })) }
+        : { bullets: lines(draftBullets) };
+    setSavingRecap(true);
+    setRegenError(null);
+    try {
+      const r = await fetch(`/api/sessions/${id}/summary`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      });
+      const json = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(json.error ?? `Save failed (${r.status}).`);
+      setSummary(json.summary);
+      setRecapEditing(false);
+    } catch (e) {
+      setRegenError(e instanceof Error ? e.message : "Saving the recap failed.");
+    } finally {
+      setSavingRecap(false);
+    }
+  }
+
+  // Regenerating discards hand edits, so confirm first when there are any.
+  function onRegenerateClick() {
+    if (summary?.editedAt) setConfirmRegen(true);
+    else void onGenerateRecap();
   }
 
   function startRename() {
@@ -530,9 +626,34 @@ export default function SessionDetailPage({
               <ListChecks className="h-4 w-4 text-accent" aria-hidden="true" />
               <Heading as="h2" size="lg">Recap</Heading>
             </div>
+            {recapEditing ? (
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setRecapEditing(false)} disabled={savingRecap}>
+                  <X className="h-4 w-4" aria-hidden="true" />
+                  Cancel
+                </Button>
+                <Button size="sm" onClick={saveRecapEdit} disabled={savingRecap}>
+                  {savingRecap ? <Spinner className="h-4 w-4 text-current" /> : <Check className="h-4 w-4" aria-hidden="true" />}
+                  Save
+                </Button>
+              </div>
+            ) : (
             <div className="flex items-center gap-2">
               {summary && (
                 <>
+                  <Button variant="outline" size="sm" onClick={startRecapEdit} disabled={regenerating}>
+                    <Pencil className="h-4 w-4" aria-hidden="true" />
+                    Edit
+                  </Button>
+                  <Button
+                    variant={showVersions ? "solid" : "outline"}
+                    size="sm"
+                    onClick={() => setShowVersions((v) => !v)}
+                    aria-pressed={showVersions}
+                  >
+                    <History className="h-4 w-4" aria-hidden="true" />
+                    Versions
+                  </Button>
                   <Button variant="outline" size="sm" onClick={() => setPresenting(true)}>
                     <Maximize className="h-4 w-4" aria-hidden="true" />
                     Present
@@ -550,7 +671,7 @@ export default function SessionDetailPage({
               <Button
                 variant={summary?.sections?.length ? "outline" : "solid"}
                 size="sm"
-                onClick={onGenerateRecap}
+                onClick={onRegenerateClick}
                 disabled={regenerating}
               >
                 {regenerating ? (
@@ -566,13 +687,57 @@ export default function SessionDetailPage({
                 )}
               </Button>
             </div>
+            )}
           </div>
           {regenError && (
             <Alert variant="danger">
               <AlertDescription>{regenError}</AlertDescription>
             </Alert>
           )}
-          {summary && (summary.sections?.length || summary.bullets.length > 0) ? (
+          {summary && showVersions && !recapEditing && (
+            <RecapCompare
+              versions={versions}
+              current={summary}
+              busy={restoring}
+              onRestore={onRestoreVersion}
+            />
+          )}
+          {summary && recapEditing ? (
+            <div className="max-h-[32rem] space-y-4 overflow-y-auto pr-1">
+              {summary.sections && summary.sections.length > 0 ? (
+                draftSections.map((d, i) => (
+                  <div key={i} className="space-y-1.5">
+                    <Input
+                      value={d.title}
+                      aria-label={`Section ${i + 1} title`}
+                      placeholder="Section title"
+                      onChange={(e) =>
+                        setDraftSections((cur) => cur.map((x, k) => (k === i ? { ...x, title: e.target.value } : x)))
+                      }
+                    />
+                    <Textarea
+                      value={d.points}
+                      aria-label={`Section ${i + 1} points`}
+                      rows={Math.max(3, d.points.split("\n").length + 1)}
+                      onChange={(e) =>
+                        setDraftSections((cur) => cur.map((x, k) => (k === i ? { ...x, points: e.target.value } : x)))
+                      }
+                    />
+                  </div>
+                ))
+              ) : (
+                <Textarea
+                  value={draftBullets}
+                  aria-label="Recap bullets"
+                  rows={Math.max(4, draftBullets.split("\n").length + 1)}
+                  onChange={(e) => setDraftBullets(e.target.value)}
+                />
+              )}
+              <Text as="div" size="xs" variant="subtle">
+                One point per line. Clearing a section's title and points removes it.
+              </Text>
+            </div>
+          ) : summary && (summary.sections?.length || summary.bullets.length > 0) ? (
             <>
               <div className="max-h-[28rem] overflow-y-auto pr-1">
                 {summary.sections && summary.sections.length > 0 ? (
@@ -609,7 +774,7 @@ export default function SessionDetailPage({
                 )}
               </div>
               <Text as="div" size="xs" variant="subtle">
-                Updated {new Date(summary.updatedAt).toLocaleString()}
+                {summary.editedAt ? "Edited" : "Updated"} {new Date(summary.updatedAt).toLocaleString()}
               </Text>
             </>
           ) : (
@@ -755,6 +920,19 @@ export default function SessionDetailPage({
         </div>
       )}
 
+      <ConfirmDialog
+        open={confirmRegen}
+        onOpenChange={(o) => {
+          if (!o) setConfirmRegen(false);
+        }}
+        title="Regenerate recap?"
+        description="You've edited this recap by hand. Regenerating replaces it with a fresh version and discards your edits."
+        confirmLabel="Regenerate"
+        onConfirm={() => {
+          setConfirmRegen(false);
+          void onGenerateRecap();
+        }}
+      />
       <ConfirmDialog
         open={pendingDelete}
         onOpenChange={(o) => {

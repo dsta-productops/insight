@@ -5,7 +5,7 @@ import {
   updateSummary,
   type SummaryDoc,
 } from "@/lib/summary";
-import { readSummary, writeSummary } from "@/lib/summary/store";
+import { pushHistory, readSummary, writeSummary } from "@/lib/summary/store";
 import { readTranscript } from "@/lib/transcribe/sessions";
 
 export const runtime = "nodejs";
@@ -73,4 +73,67 @@ export async function POST(
       { status: 500 },
     );
   }
+}
+
+const MAX_TEXT = 2000;
+
+function cleanText(v: unknown): string | null {
+  return typeof v === "string" ? v.trim().slice(0, MAX_TEXT) : null;
+}
+
+/**
+ * Save a hand-edited recap. Body { bullets?, sections? } replaces whichever
+ * parts are sent; blank entries are dropped. Stamps `editedAt` so the UI can
+ * warn before a regenerate overwrites the edits. Never calls a model.
+ */
+export async function PUT(
+  req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const { id } = await params;
+
+  let body: { bullets?: unknown; sections?: unknown } = {};
+  try {
+    body = await req.json();
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body." }, { status: 400 });
+  }
+
+  const existing = await readSummary(id);
+  if (!existing) {
+    return NextResponse.json({ error: "No recap for this session yet." }, { status: 404 });
+  }
+
+  const next: SummaryDoc = { ...existing };
+
+  if (body.bullets !== undefined) {
+    if (!Array.isArray(body.bullets)) {
+      return NextResponse.json({ error: "bullets must be an array." }, { status: 400 });
+    }
+    next.bullets = body.bullets
+      .map(cleanText)
+      .filter((b): b is string => !!b);
+  }
+
+  if (body.sections !== undefined) {
+    if (!Array.isArray(body.sections)) {
+      return NextResponse.json({ error: "sections must be an array." }, { status: 400 });
+    }
+    next.sections = body.sections
+      .map((sec) => {
+        const o = (sec ?? {}) as { title?: unknown; points?: unknown };
+        const points = Array.isArray(o.points)
+          ? o.points.map(cleanText).filter((p): p is string => !!p)
+          : [];
+        return { title: cleanText(o.title) ?? "", points };
+      })
+      // Drop a section only when it is entirely empty.
+      .filter((sec) => sec.title || sec.points.length > 0);
+  }
+
+  await pushHistory(existing);
+  next.editedAt = new Date().toISOString();
+  next.updatedAt = next.editedAt;
+  await writeSummary(next);
+  return NextResponse.json({ summary: next });
 }
